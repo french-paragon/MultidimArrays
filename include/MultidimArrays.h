@@ -22,6 +22,8 @@ limitations under the License.
 #include <assert.h>
 
 namespace Multidim {
+
+typedef int array_size_t;
 	
 template<int d>
 constexpr bool allDimsValid() {
@@ -33,13 +35,22 @@ constexpr bool allDimsValid() {
 	return allDimsValid<d>() and allDimsValid<ds...>();
 }
 
-bool allDimsValid(int d) {
+bool allDimsValid(array_size_t d) {
 	return d > 0;
 }
 
+template<size_t S>
+bool allDimsValid(std::array<array_size_t, S> const& array) {
+	for (size_t i = 0; i < S; i++) {
+		if (!allDimsValid(array[i])) {
+			return false;
+		}
+	}
+	return true;
+}
 
 template<typename ... Ds>
-bool allDimsValid(int d, Ds... dims) {
+bool allDimsValid(array_size_t d, Ds... dims) {
 	return allDimsValid(d) and allDimsValid(dims...);
 }
 
@@ -47,8 +58,6 @@ enum class AccessCheck {
 	Check = 1,
 	Nocheck = 0
 };
-
-typedef int array_size_t;
 
 template<typename T, array_size_t nDim>
 class Array {
@@ -88,6 +97,22 @@ public:
 				"Wrong number of dimensions provided");
 
 		assert(allDimsValid(dims...));
+
+		int s = 1;
+		for (int i = 0; i < nDim; i++) {
+			_strides[i] = s;
+			s *= _shape[i];
+		}
+
+		_manageData = true;
+		_data = new T[s];
+	}
+
+	Array(ShapeBlock const& shape) :
+		_shape(shape)
+	{
+
+		assert(allDimsValid(shape));
 
 		int s = 1;
 		for (int i = 0; i < nDim; i++) {
@@ -193,6 +218,19 @@ public:
 
 		return fIds;
 
+	}
+
+
+	template<AccessCheck c = AccessCheck::Check>
+	int flatIndex(int index) {
+
+		if (c == AccessCheck::Check) {
+			if (index < 0 or index >= flatLenght()) {
+				throw std::out_of_range("Index out of range");
+			}
+		}
+
+		return index;
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
