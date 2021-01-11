@@ -114,10 +114,7 @@ public:
 	{
 		if (other._manageData) {
 
-			int s = 1;
-			for (int i = 0; i < nDim; i++) {
-				s *= _shape[i];
-			}
+			int s = flatLenght();
 
 			_manageData = true;
 			_data = new T[s];
@@ -146,6 +143,16 @@ public:
 
 	ShapeBlock shape() const {
 		return _shape;
+	}
+
+	int flatLenght() const {
+
+		int s = 1;
+		for (int i = 0; i < nDim; i++) {
+			s *= _shape[i];
+		}
+
+		return s;
 	}
 
 	ShapeBlock strides() const {
