@@ -163,10 +163,16 @@ public:
 				"Wrong number of indices provided");
 
 		ShapeBlock idxs_array = {idxs...};
+		return flatIndex<c>(idxs_array);
+
+	}
+
+	template<AccessCheck c = AccessCheck::Check>
+	int flatIndex(ShapeBlock idxs) const {
 
 		if (c == AccessCheck::Check) {
 			for (int i = 0; i < nDim; i++) {
-				if (idxs_array[i] < 0 or idxs_array[i] >= _shape[i]) {
+				if (idxs[i] < 0 or idxs[i] >= _shape[i]) {
 					throw std::out_of_range("Index out of range");
 				}
 			}
@@ -175,7 +181,7 @@ public:
 		int fIds = 0;
 
 		for (int i = 0; i < nDim; i++) {
-			fIds += idxs_array[i]*_strides[i];
+			fIds += idxs[i]*_strides[i];
 		}
 
 		return fIds;
@@ -188,9 +194,21 @@ public:
 		return _data[fIds];
 	}
 
+	template<AccessCheck c = AccessCheck::Check>
+	T& at(ShapeBlock idxs) {
+		int fIds = flatIndex<c>(idxs);
+		return _data[fIds];
+	}
+
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
 	T value(Ds... idxs) const {
 		int fIds = flatIndex<c>(idxs...);
+		return _data[fIds];
+	}
+
+	template<AccessCheck c = AccessCheck::Check, typename... Ds>
+	T value(ShapeBlock idxs) const {
+		int fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
 	
