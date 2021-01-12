@@ -35,10 +35,6 @@ constexpr bool allDimsValid() {
 	return allDimsValid<d>() and allDimsValid<ds...>();
 }
 
-bool allDimsValid(array_size_t d) {
-	return d > 0;
-}
-
 template<size_t S>
 bool allDimsValid(std::array<array_size_t, S> const& array) {
 	for (size_t i = 0; i < S; i++) {
@@ -52,6 +48,11 @@ bool allDimsValid(std::array<array_size_t, S> const& array) {
 template<typename ... Ds>
 bool allDimsValid(array_size_t d, Ds... dims) {
 	return allDimsValid(d) and allDimsValid(dims...);
+}
+
+template<>
+inline bool allDimsValid(array_size_t d) {
+	return d > 0;
 }
 
 enum class AccessCheck {
