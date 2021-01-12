@@ -69,6 +69,85 @@ public:
 
 	typedef std::array<array_size_t, nDim> ShapeBlock;
 
+	class IndexBlock : public ShapeBlock {
+
+		IndexBlock& operator+=(array_size_t scalar) {
+			for (int i = 0; i < nDim; i++) {
+				(*this)[i] += scalar;
+			}
+			return *this;
+		}
+
+		IndexBlock& operator+=(IndexBlock const& other) {
+			for (int i = 0; i < nDim; i++) {
+				(*this)[i] += other[i];
+			}
+			return *this;
+		}
+
+		IndexBlock operator+(array_size_t scalar) {
+			IndexBlock b = *this;
+			b += scalar;
+			return b;
+		}
+
+		IndexBlock operator+(IndexBlock const& other) {
+			IndexBlock b = *this;
+			b += other;
+			return b;
+		}
+
+		IndexBlock& operator-=(array_size_t scalar) {
+			for (int i = 0; i < nDim; i++) {
+				(*this)[i] -= scalar;
+			}
+			return *this;
+		}
+
+		IndexBlock& operator-=(IndexBlock const& other) {
+			for (int i = 0; i < nDim; i++) {
+				(*this)[i] -= other[i];
+			}
+			return *this;
+		}
+
+		IndexBlock operator-(array_size_t scalar) {
+			IndexBlock b = *this;
+			b -= scalar;
+			return b;
+		}
+
+		IndexBlock operator-(IndexBlock const& other) {
+			IndexBlock b = *this;
+			b -= other;
+			return b;
+		}
+
+		void clip(ShapeBlock const& constraintShape) {
+			for (int j = 0; j < nDim; j++) {
+				if ((*this)[j] < 0) (*this)[j] = 0;
+				if ((*this)[j] >= constraintShape[j]) (*this)[j] = constraintShape[j] - 1;
+			}
+		}
+
+		void moveToNextIndex(ShapeBlock const& constraintShape) {
+			(*this)[0] += 1;
+			for (int j = 0; j < nDim-1 and (*this)[j] >= constraintShape[j]; j++) {
+				(*this)[j] = 0;
+				(*this)[j+1] += 1;
+			}
+		}
+
+		bool isInLimit(ShapeBlock const& constraintShape) {
+			for (int i = 0; i < nDim; i++) {
+				if ((*this)[i] < 0 or (*this)[i] >= constraintShape[i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+	};
+
 	template<array_size_t... dims>
 	Array() :
 		_shape({dims...})
@@ -200,7 +279,7 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check>
-	int flatIndex(ShapeBlock idxs) const {
+	int flatIndex(ShapeBlock const& idxs) const {
 
 		if (c == AccessCheck::Check) {
 			for (int i = 0; i < nDim; i++) {
@@ -240,7 +319,7 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check>
-	T& at(ShapeBlock idxs) {
+	T& at(ShapeBlock const& idxs) {
 		int fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
@@ -252,7 +331,7 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
-	T value(ShapeBlock idxs) const {
+	T value(ShapeBlock const& idxs) const {
 		int fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
