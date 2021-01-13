@@ -326,6 +326,15 @@ public:
 		return _manageData;
 	}
 
+	bool empty() const {
+		for (int i = 0; i < nDim; i++) {
+			if (_shape[i] == 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 private:
 
 	array_size_t sliceFirstIndex(DimSlice const& slice) {
