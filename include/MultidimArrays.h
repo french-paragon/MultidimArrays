@@ -347,7 +347,13 @@ private:
 
 	template<typename... slices>
 	ShapeBlock firstIndex(slices... s) {
-		return {sliceFirstIndex(s)...};
+		ShapeBlock blk = {sliceFirstIndex(s)...};
+		for (int i = 0; i < nDim; i++) {
+			if (blk[i] < 0) {
+				blk[i] = _shape[i] + blk[i];
+			}
+		}
+		return blk;
 	}
 
 	template<typename... slices>
@@ -368,9 +374,17 @@ private:
 			if (a[i]->stayDim()) {
 				const DimSlice * s = static_cast<const DimSlice *>(a[i]);
 
-				array_size_t eId = (s->endIndex >= 0) ? s->endIndex : (_shape[i] - s->endIndex + 1);
-				array_size_t sId = (s->startIndex >= 0) ? s->startIndex : (_shape[i] - s->startIndex + 1);
+				array_size_t eId = (s->endIndex >= 0) ? s->endIndex : (_shape[i] + s->endIndex);
+				array_size_t sId = (s->startIndex >= 0) ? s->startIndex : (_shape[i] + s->startIndex);
 				array_size_t step = s->indexJump;
+
+				if (step == 0) {
+					throw std::out_of_range("Step 0 is invalid");
+				}
+
+				if (s->endIndex >= 0 and s->indexJump > 0) {
+					eId = eId-1;
+				}
 
 				if (sId < 0 or sId >= _shape[i]) {
 					throw std::out_of_range("Start index out of range");
@@ -378,10 +392,6 @@ private:
 
 				if (eId < 0 or eId >= _shape[i]) {
 					throw std::out_of_range("End index out of range");
-				}
-
-				if (sId == eId) {
-					throw std::out_of_range("Slice lead to an empty range");
 				}
 
 				if (sId > eId) {
@@ -400,7 +410,7 @@ private:
 					throw std::out_of_range("Step is invalid");
 				}
 
-				array_size_t range = std::abs(eId - sId);
+				array_size_t range = std::abs(eId - sId) + 1;
 
 				r[p] = 1 + (range-1)/step;
 				p++;
@@ -421,7 +431,10 @@ private:
 		int p = 0;
 		for (int i = 0; i < sizeof... (slices); i++) {
 			if (a[i]->stayDim()) {
-				r[p] = _strides[i];
+
+				const DimSlice * s = static_cast<const DimSlice *>(a[i]);
+
+				r[p] = _strides[i]*s->indexJump;
 				p++;
 			}
 		}
@@ -483,7 +496,7 @@ public:
 				}
 			}
 
-			return idx0;
+			return idx0*_strides[0];
 
 		} else {
 
