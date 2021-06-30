@@ -571,6 +571,19 @@ public:
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		return _data[fIds];
 	}
+
+	T valueOrAlt(ShapeBlock const& idxs, T const& alt) const {
+
+		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
+		bool inBound = true;
+		for (int i = 0; i < nDim; i++) {
+			inBound = inBound and idxs[i] >= 0 and idxs[i] < _shape[i];
+		}
+		fIds = (inBound) ? fIds : 0;
+		T const& val = _data[fIds];
+		return (inBound) ? val : alt;
+
+	}
 	
 protected:
 
