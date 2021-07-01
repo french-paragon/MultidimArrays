@@ -26,7 +26,7 @@ limitations under the License.
 namespace Multidim {
 
 typedef int array_size_t;
-	
+
 template<int d>
 constexpr bool allDimsValid() {
 	return d > 0;
@@ -35,6 +35,16 @@ constexpr bool allDimsValid() {
 template<int d, int... ds>
 constexpr bool allDimsValid() {
 	return allDimsValid<d>() and allDimsValid<ds...>();
+}
+
+template<int... ds>
+constexpr bool staticDimsCheck() {
+	return allDimsValid<ds...>();
+}
+
+template<>
+constexpr bool staticDimsCheck() {
+	return true;
 }
 
 template<typename ... Ds>
@@ -211,11 +221,17 @@ public:
 	Array() :
 		_shape({dims...})
 	{
-		static_assert(sizeof...(dims) == nDim,
+		static_assert(sizeof...(dims) == nDim or sizeof...(dims) == 0,
 				"Wrong number of dimensions provided");
 
-		static_assert(allDimsValid<dims...>(),
-				"All dimensions must be greather or equal zero.");
+		static_assert(staticDimsCheck<dims...>(),
+			"All dimensions must be greather or equal zero.");
+
+		if (sizeof...(dims) == 0) {
+			for (int  i = 0; i < nDim; i++) {
+				_shape[i] = 0;
+			}
+		}
 
 		int s = 1;
 		for (int i = 0; i < nDim; i++) {
@@ -223,18 +239,30 @@ public:
 			s *= _shape[i];
 		}
 
-		_manageData = true;
-		_data = new T[s];
+		if (s > 0) {
+			_manageData = true;
+			_data = new T[s];
+		} else {
+			_manageData = false;
+			_data = nullptr;
+		}
 	}
+
 
 	template<typename... Ds>
 	Array(Ds... dims) :
 		_shape({dims...})
 	{
-		static_assert(sizeof...(dims) == nDim,
+		static_assert(sizeof...(dims) == nDim or sizeof...(dims) == 0,
 				"Wrong number of dimensions provided");
 
-		assert(allDimsValid(dims...));
+		if (sizeof...(dims) == 0) {
+			for (int  i = 0; i < nDim; i++) {
+				_shape[i] = 0;
+			}
+		} else {
+			assert(allDimsValid(dims...));
+		}
 
 		int s = 1;
 		for (int i = 0; i < nDim; i++) {
@@ -242,8 +270,13 @@ public:
 			s *= _shape[i];
 		}
 
-		_manageData = true;
-		_data = new T[s];
+		if (s > 0) {
+			_manageData = true;
+			_data = new T[s];
+		} else {
+			_manageData = false;
+			_data = nullptr;
+		}
 	}
 
 	Array(ShapeBlock const& shape) :
@@ -258,8 +291,41 @@ public:
 			s *= _shape[i];
 		}
 
-		_manageData = true;
-		_data = new T[s];
+		if (s > 0) {
+			_manageData = true;
+			_data = new T[s];
+		} else {
+			_manageData = false;
+			_data = nullptr;
+		}
+	}
+
+	Array(ShapeBlock const& shape, ShapeBlock const& strds) :
+		_shape(shape),
+		_strides(strds)
+	{
+
+		assert(allDimsValid(shape));
+
+		ShapeBlock idx = _shape;
+		for (int i = 0; i < nDim; i++) {
+			idx[i] = idx[i]-1;
+		}
+		int s = flatIndex(idx) + 1;
+		int v = 1;
+		for (int i = 0; i < nDim; i++) {
+			v *= _shape[i];
+		}
+
+		assert(s == v);
+
+		if (s > 0) {
+			_manageData = true;
+			_data = new T[s];
+		} else {
+			_manageData = false;
+			_data = nullptr;
+		}
 	}
 
 	Array(T* data, ShapeBlock const& shape, ShapeBlock const& strides) :
@@ -279,13 +345,35 @@ public:
 
 			int s = flatLenght();
 
+			if (s > 0) {
+				_manageData = true;
+				_data = new T[s];
+
+				memcpy(_data, other._data, sizeof (T)*s);
+			} else {
+				_manageData = false;
+				_data = nullptr;
+			}
+		} else {
+			_manageData = false;
+			_data = other._data;
+		}
+	}
+
+	Array(Array<T, nDim> const& other) :
+		_shape(other._shape),
+		_strides(other._strides)
+	{
+		int s = flatLenght();
+
+		if (s > 0) {
 			_manageData = true;
 			_data = new T[s];
 
 			memcpy(_data, other._data, sizeof (T)*s);
 		} else {
 			_manageData = false;
-			_data = other._data;
+			_data = nullptr;
 		}
 	}
 
