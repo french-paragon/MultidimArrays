@@ -22,6 +22,7 @@ limitations under the License.
 #include <cstring>
 #include <tuple>
 #include <assert.h>
+#include <iostream>
 
 namespace Multidim {
 
@@ -759,11 +760,9 @@ OutStream& printArray(OutStream& out, Array<T, 1> const& array, int nPreSpaces =
 
 }
 
-template<class OutStream, typename T, array_size_t nDim>
-OutStream& operator<<(OutStream& out, Array<T, nDim> const& array) {
-
+template<typename T, array_size_t nDim>
+std::ostream& operator<<(std::ostream& out, Array<T, nDim> const& array) {
 	return printArray(out, array);
-
 }
 	
 } //namespace multidim 
