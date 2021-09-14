@@ -548,6 +548,43 @@ public:
 		return SubArray(_data + offset, shape, strides);
 	}
 
+	Array<T, std::max(1,nDim-1)> sliceView(int dim, int coord) {
+
+		if (dim < 0 or dim >= nDim) {
+			throw std::out_of_range("Dim index out of range");
+		}
+
+		if (coord < 0 or coord >= shape()[dim]) {
+			throw std::out_of_range("Index out of range");
+		}
+
+		using SubArray = Array<T, std::max(1,nDim-1)>;
+		using SubShapeBlock = typename SubArray::ShapeBlock;
+
+		int offset = strides()[dim]*coord;
+		SubShapeBlock subshape;
+		SubShapeBlock substrides;
+
+		if (nDim == 1) {
+			subshape = {1};
+			substrides = {strides()[0]};
+
+			return SubArray(_data + offset, subshape, substrides);
+		}
+
+		for (int i = 0; i < dim; i++) {
+			subshape[i] = shape()[i];
+			substrides[i] = strides()[i];
+		}
+
+		for (int i = dim+1; i < nDim; i++) {
+			subshape[i-1] = shape()[i];
+			substrides[i-1] = strides()[i];
+		}
+
+		return SubArray(_data + offset, subshape, substrides);
+	}
+
 
 	template<AccessCheck c = AccessCheck::Check>
 	int flatIndex(ShapeBlock const& idxs) const {
@@ -682,6 +719,52 @@ protected:
 	bool _manageData;
 	
 };
+
+template<class OutStream, typename T, array_size_t nDim>
+OutStream& printArray(OutStream& out, Array<T, nDim> const& array, int nPreSpaces = 0) {
+
+
+	for (int i = 0; i < nPreSpaces; i++) {
+		out << ' ';
+	}
+	out << '[' << '\n';
+	for (int i = 0; i < array.shape().back(); i++) {
+		printArray(out, const_cast<Array<T, nDim>*>(&array)->sliceView(nDim-1,i), nPreSpaces+1);
+	}
+	for (int i = 0; i < nPreSpaces; i++) {
+		out << ' ';
+	}
+	out << ']' << '\n';
+
+	return out;
+
+}
+
+template<class OutStream, typename T>
+OutStream& printArray(OutStream& out, Array<T, 1> const& array, int nPreSpaces = 0) {
+
+	for (int i = 0; i < nPreSpaces; i++) {
+		out << ' ';
+	}
+	out << '[';
+	for (int i = 0; i < array.flatLenght(); i++) {
+		if (i != 0) {
+			out << ' ';
+		}
+		out << array.template value<AccessCheck::Nocheck>(i);
+	}
+	out << "]\n";
+
+	return out;
+
+}
+
+template<class OutStream, typename T, array_size_t nDim>
+OutStream& operator<<(OutStream& out, Array<T, nDim> const& array) {
+
+	return printArray(out, array);
+
+}
 	
 } //namespace multidim 
 
