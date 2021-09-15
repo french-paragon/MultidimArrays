@@ -387,10 +387,92 @@ public:
 		other._data = nullptr;
 	}
 
+	Array(const Array<T, nDim>&& other) :
+		_shape(other._shape),
+		_strides(other._strides),
+		_manageData(other._manageData),
+		_data(other._data)
+	{
+		other._data = nullptr;
+	}
+
 	~Array() {
 		if (_manageData and _data != nullptr) {
 			delete [] _data;
 		}
+	}
+
+	Array& operator=(Array<T, nDim>& other) {
+		if (_manageData and _data != nullptr) {
+			delete [] _data;
+		}
+		_shape = other.shape();
+		_strides = other.strides();
+
+		if (other._manageData) {
+
+			int s = flatLenght();
+
+			if (s > 0) {
+				_manageData = true;
+				_data = new T[s];
+
+				memcpy(_data, other._data, sizeof (T)*s);
+			} else {
+				_manageData = false;
+				_data = nullptr;
+			}
+		} else {
+			_manageData = false;
+			_data = other._data;
+		}
+		return *this;
+	}
+
+	Array& operator=(Array<T, nDim> const& other) {
+		if (_manageData and _data != nullptr) {
+			delete [] _data;
+		}
+		_shape = other.shape();
+		_strides = other.strides();
+		int s = flatLenght();
+
+		if (s > 0) {
+			_manageData = true;
+			_data = new T[s];
+
+			memcpy(_data, other._data, sizeof (T)*s);
+		} else {
+			_manageData = false;
+			_data = nullptr;
+		}
+		return *this;
+	}
+
+	Array& operator=(Array<T, nDim>&& other) {
+		if (_manageData and _data != nullptr) {
+			delete [] _data;
+		}
+		_shape = other.shape();
+		_strides = other.strides();
+		_manageData = other._manageData;
+		_data = other._data;
+
+		other._data = nullptr;
+		return *this;
+	}
+
+	Array& operator=(const Array<T, nDim>&& other) {
+		if (_manageData and _data != nullptr) {
+			delete [] _data;
+		}
+		_shape = other.shape();
+		_strides = other.strides();
+		_manageData = other._manageData;
+		_data = other._data;
+
+		other._data = nullptr;
+		return *this;
 	}
 
 	ShapeBlock shape() const {
