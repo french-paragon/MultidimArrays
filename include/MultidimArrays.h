@@ -792,6 +792,25 @@ public:
 		return (inBound) ? val : alt;
 
 	}
+
+	/*!
+	 * \brief takePointer allows for an external operator to take ownership of the managed pointer
+	 * \return the data pointer if the multidimensional array do manage it, else nullptr
+	 *
+	 * This function is meant for systems that needs to transform a multidimensional array into a different class using some kind of buffer protocol
+	 * and make the new class responsible for managing the data.
+	 *
+	 * In most cases it is not advisable to use it, except if you know exactly what you are doing, as
+	 * misuse can lean to memory leak or corruption.
+	 */
+	T* takePointer() {
+
+		if (_manageData) {
+			_manageData = false;
+			return _data;
+		}
+		return nullptr;
+	}
 	
 protected:
 
