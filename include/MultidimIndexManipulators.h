@@ -25,6 +25,19 @@ public:
 			_mask[masked] = true;
 		}
 	}
+	template<int nElems>
+	DimsExclusionSet(std::array<int, nElems> const& maskedDims) {
+		static_assert(nElems <= nDim,
+				"Number of dimension provided is bigger than the number of dimensions in the set !");
+
+		for (int i = 0; i < nDim; i++) {
+			_mask[i] = false;
+		}
+
+		for (int masked : maskedDims) {
+			_mask[masked] = true;
+		}
+	}
 
 	DimsExclusionSet(DimsExclusionSet<nDim> const& other) :
 		_mask(other._mask)
