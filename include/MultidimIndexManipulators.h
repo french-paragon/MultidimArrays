@@ -21,7 +21,7 @@ public:
 			_mask[i] = false;
 		}
 
-		for (int masked : {maskedDims...}) {
+		for (int masked : std::array<int, sizeof...(maskedDims)>({maskedDims...})) {
 			_mask[masked] = true;
 		}
 	}
