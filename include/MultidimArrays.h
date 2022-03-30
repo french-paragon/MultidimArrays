@@ -141,6 +141,11 @@ public:
 
 	class IndexBlock : public ShapeBlock {
 	public:
+		IndexBlock(ShapeBlock const& other) :
+			ShapeBlock(other) {
+
+		}
+
 		IndexBlock& operator+=(array_size_t scalar) {
 			for (int i = 0; i < nDim; i++) {
 				(*this)[i] += scalar;
