@@ -2,7 +2,7 @@
 #define MULTIDIM_ARRAY_H
 
 /*
-Copyright 2021 Paragon<french.paragon@gmail.com>
+Copyright 2021-2022 Paragon<french.paragon@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
