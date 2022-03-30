@@ -1,4 +1,5 @@
 #include "MultidimArrays.h"
+#include "MultidimIndexManipulators.h"
 #include <iostream>
 
 int main() {
@@ -65,6 +66,35 @@ int main() {
 
 		std::cout << window << std::endl;
 
+	}
+
+	std::cout << std::endl;
+
+	constexpr int testIdxConvDims = 3;
+	constexpr int testIdxConvDimsSize = 3;
+
+	std::array<int, testIdxConvDims> shape;
+
+	for (int i = 0; i < testIdxConvDims; i++) {
+		shape[i] = testIdxConvDimsSize;
+	}
+
+	Multidim::IndexConverter<3> testConverter(shape, Multidim::DimsExclusionSet<testIdxConvDims>(testIdxConvDims-1));
+
+
+	std::cout << std::endl;
+
+	std::cout << testConverter.numberOfPossibleIndices() << std::endl;
+
+	for (int i = 0; i < testConverter.numberOfPossibleIndices(); i++) {
+
+		auto idx = testConverter.getIndexFromPseudoFlatId(i);
+
+		std::cout << "index " << i << ": \t[ ";
+		for (int j = 0; j < testIdxConvDims; j++) {
+			std::cout << idx[j] << ' ';
+		}
+		std::cout << "]" << std::endl;
 	}
 
 	std::cout << std::endl;
