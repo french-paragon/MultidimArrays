@@ -141,6 +141,10 @@ public:
 
 	class IndexBlock : public ShapeBlock {
 	public:
+		IndexBlock() :
+			ShapeBlock() {
+
+		}
 		IndexBlock(ShapeBlock const& other) :
 			ShapeBlock(other) {
 
@@ -334,11 +338,11 @@ public:
 		}
 	}
 
-	Array(T* data, ShapeBlock const& shape, ShapeBlock const& strides) :
+	Array(T* data, ShapeBlock const& shape, ShapeBlock const& strides, bool manage = false) :
 		_shape(shape),
 		_strides(strides),
 		_data(data),
-		_manageData(false)
+		_manageData(manage)
 	{
 
 	}
