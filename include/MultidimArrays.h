@@ -129,6 +129,11 @@ constexpr array_size_t slicedDims<DimIndex>() {
 	return 0;
 }
 
+template<typename... slices>
+constexpr std::array<bool, sizeof... (slices)> slicedMask() {
+	return {(slicedDims<slices>() == 1)...};
+}
+
 template<typename T, array_size_t nDim>
 class Array {
 
@@ -517,16 +522,16 @@ public:
 
 private:
 
-	array_size_t sliceFirstIndex(DimSlice const& slice) {
+	inline array_size_t sliceFirstIndex(DimSlice const& slice) {
 		return slice.startIndex;
 	}
 
-	array_size_t sliceFirstIndex(DimIndex const& index) {
+	inline array_size_t sliceFirstIndex(DimIndex const& index) {
 		return index.index;
 	}
 
 	template<typename... slices>
-	ShapeBlock firstIndex(slices... s) {
+	inline ShapeBlock firstIndex(slices... s) {
 		ShapeBlock blk = {sliceFirstIndex(s)...};
 		for (int i = 0; i < nDim; i++) {
 			if (blk[i] < 0) {
@@ -537,21 +542,22 @@ private:
 	}
 
 	template<typename... slices>
-	int dataOffset(slices... s) {
+	inline int dataOffset(slices... s) {
 		return flatIndex(firstIndex(s...));
 	}
 
 	template<typename... slices>
-	typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubShape(slices... s) {
+	inline typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubShape(slices... s) {
 
 		using SBlock = typename Array<T, slicedDims<slices...>()>::ShapeBlock;
 
 		std::array<const DimInfo *, sizeof... (slices)> a = {static_cast<const DimInfo *>(&s)...};
+		constexpr std::array<bool, sizeof... (slices)> slicedDimsMask = slicedMask<slices...>();
 		SBlock r;
 
 		int p = 0;
 		for (int i = 0; i < sizeof... (slices); i++) {
-			if (a[i]->stayDim()) {
+			if (slicedDimsMask[i]) {
 				const DimSlice * s = static_cast<const DimSlice *>(a[i]);
 
 				array_size_t eId = (s->endIndex >= 0) ? s->endIndex : (_shape[i] + s->endIndex);
@@ -601,16 +607,17 @@ private:
 	}
 
 	template<typename... slices>
-	typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubStrides(slices... s) {
+	inline typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubStrides(slices... s) {
 
 		using SBlock = typename Array<T, slicedDims<slices...>()>::ShapeBlock;
 
 		std::array<DimInfo const*, sizeof... (slices)> a = {static_cast<DimInfo const*>(&s)...};
+		constexpr std::array<bool, sizeof... (slices)> slicedDimsMask = slicedMask<slices...>();
 		SBlock r;
 
 		int p = 0;
 		for (int i = 0; i < sizeof... (slices); i++) {
-			if (a[i]->stayDim()) {
+			if (slicedDimsMask[i]) {
 
 				const DimSlice * s = static_cast<const DimSlice *>(a[i]);
 
@@ -625,7 +632,7 @@ private:
 public:
 
 	template<typename... slices>
-	Array<T, slicedDims<slices...>()> subView(slices... s) {
+	inline Array<T, slicedDims<slices...>()> subView(slices... s) {
 
 		static_assert (sizeof... (slices) == nDim, "Cannot generate an array with zero dimensions");
 		static_assert (slicedDims<slices...>() > 0, "Cannot generate an array with zero dimensions");
@@ -640,7 +647,7 @@ public:
 		return SubArray(_data + offset, shape, strides);
 	}
 
-	Array<T, std::max(1,nDim-1)> sliceView(int dim, int coord) {
+	inline Array<T, std::max(1,nDim-1)> sliceView(int dim, int coord) {
 
 		if (dim < 0 or dim >= nDim) {
 			throw std::out_of_range("Dim index out of range");
@@ -679,7 +686,7 @@ public:
 
 
 	template<AccessCheck c = AccessCheck::Check>
-	int flatIndex(ShapeBlock const& idxs) const {
+	inline int flatIndex(ShapeBlock const& idxs) const {
 
 		if (c == AccessCheck::Check) {
 			for (int i = 0; i < nDim; i++) {
@@ -700,7 +707,7 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
-	int flatIndex(int idx0, Ds... idxs) const {
+	inline int flatIndex(int idx0, Ds... idxs) const {
 
 		static_assert(sizeof...(idxs) == nDim -1 or sizeof...(idxs) == 0,
 				"Wrong number of indices provided");
@@ -744,52 +751,52 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
-	T& at(Ds... idxs) {
+	inline T& at(Ds... idxs) {
 		int fIds = flatIndex<c>(idxs...);
 		return _data[fIds];
 	}
 
 	template<AccessCheck c = AccessCheck::Check>
-	T& at(ShapeBlock const& idxs) {
+	inline T& at(ShapeBlock const& idxs) {
 		int fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
 
 	template<typename... Ds>
-	T& atUnchecked(Ds... idxs) {
+	inline T& atUnchecked(Ds... idxs) {
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
 		return _data[fIds];
 	}
 
-	T& atUnchecked(ShapeBlock const& idxs) {
+	inline T& atUnchecked(ShapeBlock const& idxs) {
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		return _data[fIds];
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
-	T value(Ds... idxs) const {
+	inline T value(Ds... idxs) const {
 		int fIds = flatIndex<c>(idxs...);
 		return _data[fIds];
 	}
 
 	template<AccessCheck c = AccessCheck::Check>
-	T value(ShapeBlock const& idxs) const {
+	inline T value(ShapeBlock const& idxs) const {
 		int fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
 
 	template<typename... Ds>
-	T valueUnchecked(Ds... idxs) const {
+	inline T valueUnchecked(Ds... idxs) const {
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
 		return _data[fIds];
 	}
 
-	T valueUnchecked(ShapeBlock const& idxs) const {
+	inline T valueUnchecked(ShapeBlock const& idxs) const {
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		return _data[fIds];
 	}
 
-	T valueOrAlt(ShapeBlock const& idxs, T const& alt) const {
+	inline T valueOrAlt(ShapeBlock const& idxs, T const& alt) const {
 
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		bool inBound = true;
