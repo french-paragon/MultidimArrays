@@ -731,6 +731,21 @@ public:
 
 	}
 
+	ShapeBlock indexFromFlat(int index) const {
+
+		ShapeBlock out;
+		int leftOver = index;
+
+		for (int i = nDim-1; i >= 0; i--) {
+
+			//garanteed optimizable to branchless !
+			out[i] = leftOver/_strides[i];
+			leftOver %= _strides[i];
+		}
+
+		return out;
+	}
+
 	bool copyData(Array<T,nDim> const& other) {
 
 		if (other.shape() != shape()) {
@@ -826,6 +841,57 @@ public:
 			return _data;
 		}
 		return nullptr;
+	}
+
+	template<typename T_O>
+	/*!
+	 * \brief cast generate an array of a different type than the original array.
+	 * \return the casted array
+	 *
+	 * An edge case occur when T_O is the same type as T.
+	 * If the template type T_O is equal to the array type t, the array is moved to the returned array.
+	 * The old array will still keep a reference to the data, but the new array will be in charge of managing the memory.
+	 *
+	 */
+	inline Multidim::Array<T_O, nDim> cast() {
+
+		if (std::is_same<T_O, T>::value) {
+
+			Multidim::Array<T_O,3> casteted(reinterpret_cast<T_O*>(_data), shape(), strides(), _manageData);
+			_manageData = false;
+			return casteted;
+		}
+
+		Multidim::Array<T_O,3> casteted(shape(), strides());
+
+		#pragma omp parallel for
+		for (int i = 0; i < flatLenght(); i++) {
+			ShapeBlock idx = indexFromFlat(i);
+			casteted.atUnchecked(idx) = static_cast<T_O>(valueUnchecked(idx));
+		}
+
+		return casteted;
+	}
+
+	template<typename T_O>
+	/*!
+	 * \brief cast generate an array of a different type than the original array.
+	 * \return the casted array
+	 *
+	 * The const variant is garantted to copy the data, even is T_O and T are the same.
+	 *
+	 */
+	inline Multidim::Array<T_O, nDim> cast() const {
+
+		Multidim::Array<T_O,3> casteted(shape(), strides());
+
+		#pragma omp parallel for
+		for (int i = 0; i < flatLenght(); i++) {
+			ShapeBlock idx = indexFromFlat(i);
+			casteted.atUnchecked(idx) = static_cast<T_O>(valueUnchecked(idx));
+		}
+
+		return casteted;
 	}
 	
 protected:
