@@ -207,6 +207,12 @@ public:
 			return b;
 		}
 
+		void setZero() {
+			for (int j = 0; j < nDim; j++) {
+				(*this)[j] = 0;
+			}
+		}
+
 		void clip(ShapeBlock const& constraintShape) {
 			for (int j = 0; j < nDim; j++) {
 				if ((*this)[j] < 0) (*this)[j] = 0;
@@ -358,13 +364,35 @@ public:
 	{
 		if (other._manageData) {
 
+			if (!other.isDense()) {
+				int s = 1;
+				for (int i = 0; i < nDim; i++) {
+					_strides[i] = s;
+					s *= _shape[i];
+				}
+			}
+
 			int s = flatLenght();
 
 			if (s > 0) {
 				_manageData = true;
 				_data = new T[s];
 
-				memcpy(_data, other._data, sizeof (T)*s);
+				if (other.isDense()) {
+
+					memcpy(_data, other._data, sizeof (T)*s);
+
+				} else {
+
+					IndexBlock idx;
+					idx.setZero();
+
+					for (int i = 0; i < s; i++) {
+						atUnchecked(idx) = other.atUnchecked(idx);
+						idx.moveToNextIndex(_shape);
+					}
+				}
+
 			} else {
 				_manageData = false;
 				_data = nullptr;
@@ -379,13 +407,36 @@ public:
 		_shape(other._shape),
 		_strides(other._strides)
 	{
+
+		if (!other.isDense()) {
+			int s = 1;
+			for (int i = 0; i < nDim; i++) {
+				_strides[i] = s;
+				s *= _shape[i];
+			}
+		}
+
 		int s = flatLenght();
 
 		if (s > 0) {
 			_manageData = true;
 			_data = new T[s];
 
-			memcpy(_data, other._data, sizeof (T)*s);
+			if (other.isDense()) {
+
+				memcpy(_data, other._data, sizeof (T)*s);
+
+			} else {
+
+				IndexBlock idx;
+				idx.setZero();
+
+				for (int i = 0; i < s; i++) {
+					atUnchecked(idx) = other.valueUnchecked(idx);
+					idx.moveToNextIndex(_shape);
+				}
+			}
+
 		} else {
 			_manageData = false;
 			_data = nullptr;
@@ -421,7 +472,16 @@ public:
 			delete [] _data;
 		}
 		_shape = other.shape();
-		_strides = other.strides();
+
+		if (other.isDense()) {
+			_strides = other.strides();
+		} else {
+			int s = 1;
+			for (int i = 0; i < nDim; i++) {
+				_strides[i] = s;
+				s *= _shape[i];
+			}
+		}
 
 		if (other._manageData) {
 
@@ -431,7 +491,20 @@ public:
 				_manageData = true;
 				_data = new T[s];
 
-				memcpy(_data, other._data, sizeof (T)*s);
+				if (other.isDense()) {
+
+					memcpy(_data, other._data, sizeof (T)*s);
+
+				} else {
+
+					IndexBlock idx;
+					idx.setZero();
+
+					for (int i = 0; i < s; i++) {
+						atUnchecked(idx) = other.atUnchecked(idx);
+						idx.moveToNextIndex(_shape);
+					}
+				}
 			} else {
 				_manageData = false;
 				_data = nullptr;
@@ -448,14 +521,39 @@ public:
 			delete [] _data;
 		}
 		_shape = other.shape();
-		_strides = other.strides();
+
+		if (other.isDense()) {
+			_strides = other.strides();
+		} else {
+			int s = 1;
+			for (int i = 0; i < nDim; i++) {
+				_strides[i] = s;
+				s *= _shape[i];
+			}
+		}
+
 		int s = flatLenght();
 
 		if (s > 0) {
-			_manageData = true;
-			_data = new T[s];
+			if (other.isDense()) {
+				_manageData = true;
+				_data = new T[s];
 
-			memcpy(_data, other._data, sizeof (T)*s);
+				memcpy(_data, other._data, sizeof (T)*s);
+
+			} else {
+
+				_manageData = true;
+				_data = new T[s];
+
+				IndexBlock idx;
+				idx.setZero();
+
+				for (int i = 0; i < s; i++) {
+					atUnchecked(idx) = other.valueUnchecked(idx);
+					idx.moveToNextIndex(_shape);
+				}
+			}
 		} else {
 			_manageData = false;
 			_data = nullptr;
@@ -508,7 +606,23 @@ public:
 	}
 
 	bool isView() const {
-		return _manageData;
+		return !_manageData;
+	}
+
+	bool isDense() const {
+
+		ShapeBlock idx = _shape;
+
+		for (int i = 0; i < nDim; i++) {
+
+			if (_strides[i] < 1) {
+				return false;
+			}
+
+			idx[i] -= 1;
+		}
+
+		return flatIndex(idx) == flatLenght()-1;
 	}
 
 	bool empty() const {
