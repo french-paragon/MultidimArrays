@@ -73,6 +73,18 @@ enum class AccessCheck {
 	Nocheck = 0
 };
 
+enum ArrayDataAccessConstness {
+	ConstView = 1,
+	NonConstView = 0
+};
+
+constexpr ArrayDataAccessConstness oppositeConstness(ArrayDataAccessConstness constness) {
+	if (constness == ConstView) {
+		return NonConstView;
+	}
+	return ConstView;
+}
+
 struct DimInfo {
 	virtual bool stayDim() const = 0;
 };
@@ -134,13 +146,20 @@ constexpr std::array<bool, sizeof... (slices)> slicedMask() {
 	return {(slicedDims<slices>() == 1)...};
 }
 
-template<typename T, array_size_t nDim>
+template<typename T, array_size_t nDim, ArrayDataAccessConstness viewConstness = NonConstView>
 class Array {
 
 	static_assert(nDim > 0,
                   "No dimensions provided");
 
+	template<typename fT, array_size_t fNDim, ArrayDataAccessConstness fViewConstness>
+	friend class Array;
+
 public:
+
+	static constexpr bool isConstView() {
+		return viewConstness == ConstView;
+	}
 
 	typedef std::array<array_size_t, nDim> ShapeBlock;
 
@@ -239,11 +258,17 @@ public:
 	};
 
 	template<array_size_t... dims>
+	/*!
+	 * \brief Array constructor with shape known at compile time.
+	 */
 	Array() :
 		_shape({dims...})
 	{
 		static_assert(sizeof...(dims) == nDim or sizeof...(dims) == 0,
 				"Wrong number of dimensions provided");
+
+		static_assert(viewConstness == NonConstView or sizeof...(dims) == 0,
+				"Cannot build a non-empty const view array without data !");
 
 		static_assert(staticDimsCheck<dims...>(),
 			"All dimensions must be greather or equal zero.");
@@ -271,11 +296,18 @@ public:
 
 
 	template<typename... Ds>
+	/*!
+	 * \brief Array constructor with set shape
+	 * \param dims the sizes of each dimensions.
+	 */
 	Array(Ds... dims) :
 		_shape({dims...})
 	{
 		static_assert(sizeof...(dims) == nDim or sizeof...(dims) == 0,
 				"Wrong number of dimensions provided");
+
+		static_assert(viewConstness == NonConstView or sizeof...(dims) == 0,
+				"Cannot build a non-empty const view array without data !");
 
 		if (sizeof...(dims) == 0) {
 			for (int  i = 0; i < nDim; i++) {
@@ -300,7 +332,12 @@ public:
 		}
 	}
 
-	Array(ShapeBlock const& shape) :
+	template<ArrayDataAccessConstness vc = viewConstness>
+	/*!
+	 * \brief Array constructor with a set shape
+	 * \param shape the shape to use.
+	 */
+	Array(ShapeBlock const& shape, std::enable_if_t<vc == NonConstView and viewConstness == NonConstView, void*> = nullptr) :
 		_shape(shape)
 	{
 
@@ -321,7 +358,13 @@ public:
 		}
 	}
 
-	Array(ShapeBlock const& shape, ShapeBlock const& strds) :
+	template<ArrayDataAccessConstness vc = viewConstness>
+	/*!
+	 * \brief Array constructor with set shape and strides
+	 * \param shape the shape to use
+	 * \param strds the strides to use
+	 */
+	Array(ShapeBlock const& shape, ShapeBlock const& strds, std::enable_if_t<vc == NonConstView and viewConstness == NonConstView, void*> = nullptr) :
 		_shape(shape),
 		_strides(strds)
 	{
@@ -349,6 +392,13 @@ public:
 		}
 	}
 
+	/*!
+	 * \brief Array constructor from a block of memory
+	 * \param data the pointer to the data segment
+	 * \param shape the shape of the array
+	 * \param strides the strides of the array
+	 * \param manage if the array is expected to delete the data segment or not.
+	 */
 	Array(T* data, ShapeBlock const& shape, ShapeBlock const& strides, bool manage = false) :
 		_shape(shape),
 		_strides(strides),
@@ -358,10 +408,28 @@ public:
 
 	}
 
-	Array(Array<T, nDim>& other) :
+	/*!
+	 * \brief Array copy constructor
+	 * \param other the other array to copy.
+	 *
+	 * Note that the behavior of this constructor is a bit strange for const view arrays.
+	 *
+	 * If the constructed array is a const view, it will always get constructed as a view of the other array.
+	 * This behavior is to make sure that functions taking a const view array as argument will not copy
+	 * non const view array passed as argument, which would be really inneficient...
+	 *
+	 */
+	Array(Array<T, nDim, viewConstness>& other) : // TODO : check if we can share ownership of a data segment using smart pointers...
 		_shape(other._shape),
 		_strides(other._strides)
 	{
+
+		if (viewConstness == ConstView) { //construct a view
+			_data = other._data;
+			_manageData = false;
+			return;
+		}
+
 		if (other._manageData) {
 
 			if (!other.isDense()) {
@@ -388,7 +456,7 @@ public:
 					idx.setZero();
 
 					for (int i = 0; i < s; i++) {
-						atUnchecked(idx) = other.atUnchecked(idx);
+						atUnchecked(idx) = other.valueUnchecked(idx);
 						idx.moveToNextIndex(_shape);
 					}
 				}
@@ -403,10 +471,82 @@ public:
 		}
 	}
 
-	Array(Array<T, nDim> const& other) :
+	/*!
+	 * \brief Array constructor with array of opposite constness
+	 * \param other the other array to copy.
+	 *
+	 * Note that the behavior of this constructor is a bit strange for const view arrays.
+	 *
+	 * If the constructed array is a const view, it will always get constructed as a view of the other array.
+	 * This behavior is to make sure that functions taking a const view array as argument will not copy
+	 * non const view array passed as argument, which would be really inneficient...
+	 *
+	 * Also note that we need to explicitly declare this function, if we use a template
+	 * for the data view constness, then some function of the qt meta object system get broken.
+	 *
+	 */
+	Array(Array<T, nDim, oppositeConstness(viewConstness)>& other) : // TODO : check if we can share ownership of a data segment using smart pointers...
 		_shape(other._shape),
 		_strides(other._strides)
 	{
+
+		if (viewConstness == ConstView) { //construct a view
+			_data = other._data;
+			_manageData = false;
+			return;
+		}
+
+		if (other._manageData) {
+
+			if (!other.isDense()) {
+				int s = 1;
+				for (int i = 0; i < nDim; i++) {
+					_strides[i] = s;
+					s *= _shape[i];
+				}
+			}
+
+			int s = flatLenght();
+
+			if (s > 0) {
+				_manageData = true;
+				_data = new T[s];
+
+				if (other.isDense()) {
+
+					memcpy(_data, other._data, sizeof (T)*s);
+
+				} else {
+
+					IndexBlock idx;
+					idx.setZero();
+
+					for (int i = 0; i < s; i++) {
+						_data[flatIndex(idx)] = other.valueUnchecked(idx);
+						idx.moveToNextIndex(_shape);
+					}
+				}
+
+			} else {
+				_manageData = false;
+				_data = nullptr;
+			}
+		} else {
+			_manageData = false;
+			_data = other._data;
+		}
+	}
+
+	Array(Array<T, nDim, viewConstness> const& other) :
+		_shape(other._shape),
+		_strides(other._strides)
+	{
+
+		if (viewConstness == ConstView) { //construct a view
+			_data = other._data;
+			_manageData = false;
+			return;
+		}
 
 		if (!other.isDense()) {
 			int s = 1;
@@ -432,7 +572,7 @@ public:
 				idx.setZero();
 
 				for (int i = 0; i < s; i++) {
-					atUnchecked(idx) = other.valueUnchecked(idx);
+					_data[flatIndex(idx)] = other.valueUnchecked(idx);
 					idx.moveToNextIndex(_shape);
 				}
 			}
@@ -443,16 +583,63 @@ public:
 		}
 	}
 
-	Array(Array<T, nDim>&& other) :
+	Array(Array<T, nDim, oppositeConstness(viewConstness)> const& other) :
 		_shape(other._shape),
-		_strides(other._strides),
-		_manageData(other._manageData),
-		_data(other._data)
+		_strides(other._strides)
 	{
-		other._data = nullptr;
+
+		if (viewConstness == ConstView) { //construct a view
+			_data = other._data;
+			_manageData = false;
+			return;
+		}
+
+		if (!other.isDense()) {
+			int s = 1;
+			for (int i = 0; i < nDim; i++) {
+				_strides[i] = s;
+				s *= _shape[i];
+			}
+		}
+
+		int s = flatLenght();
+
+		if (s > 0) {
+			_manageData = true;
+			_data = new T[s];
+
+			if (other.isDense()) {
+
+				memcpy(_data, other._data, sizeof (T)*s);
+
+			} else {
+
+				IndexBlock idx;
+				idx.setZero();
+
+				for (int i = 0; i < s; i++) {
+					_data[flatIndex(idx)] = other.valueUnchecked(idx);
+					idx.moveToNextIndex(_shape);
+				}
+			}
+
+		} else {
+			_manageData = false;
+			_data = nullptr;
+		}
 	}
 
-	Array(const Array<T, nDim>&& other) :
+
+	template<ArrayDataAccessConstness otherViewConstness,
+			 std::enable_if_t<viewConstness == ConstView or otherViewConstness == NonConstView, bool> = true>
+	/*!
+	 * \brief Array move constructor for const view array
+	 * \param other the movable array to copy.
+	 *
+	 * This constructor is available only for const view array, or when the movable array is non const view,
+	 * else it would be possible to build a non const view array from a const view one by simply using std::move...
+	 */
+	Array(Array<T, nDim, otherViewConstness>&& other) :
 		_shape(other._shape),
 		_strides(other._strides),
 		_manageData(other._manageData),
@@ -746,12 +933,12 @@ private:
 public:
 
 	template<typename... slices>
-	inline Array<T, slicedDims<slices...>()> subView(slices... s) {
+	inline Array<T, slicedDims<slices...>(), viewConstness> subView(slices... s) {
 
 		static_assert (sizeof... (slices) == nDim, "Cannot generate an array with zero dimensions");
 		static_assert (slicedDims<slices...>() > 0, "Cannot generate an array with zero dimensions");
 
-		using SubArray = Array<T, slicedDims<slices...>()>;
+		using SubArray = Array<T, slicedDims<slices...>(), viewConstness>;
 		using SubShapeBlock = typename SubArray::ShapeBlock;
 
 		int offset = dataOffset(s...);
@@ -761,7 +948,29 @@ public:
 		return SubArray(_data + offset, shape, strides);
 	}
 
-	inline Array<T, std::max(1,nDim-1)> sliceView(int dim, int coord) {
+	template<typename... slices>
+	inline Array<T, slicedDims<slices...>(), ConstView> subView(slices... s) const {
+
+		static_assert (sizeof... (slices) == nDim, "Cannot generate an array with zero dimensions");
+		static_assert (slicedDims<slices...>() > 0, "Cannot generate an array with zero dimensions");
+
+		using SubArray = Array<T, slicedDims<slices...>(), ConstView>;
+		using SubShapeBlock = typename SubArray::ShapeBlock;
+
+		int offset = dataOffset(s...);
+		SubShapeBlock shape = getSubShape(s...);
+		SubShapeBlock strides = getSubStrides(s...);
+
+		return SubArray(_data + offset, shape, strides);
+	}
+
+	/*!
+	 * \brief sliceView return a view of the array were a single dimension is indexed.
+	 * \param dim the dim to index
+	 * \param coord the index for dim
+	 * \return a view of the array with one less dimension.
+	 */
+	inline Array<T, std::max(1,nDim-1), viewConstness> sliceView(int dim, int coord) {
 
 		if (dim < 0 or dim >= nDim) {
 			throw std::out_of_range("Dim index out of range");
@@ -771,7 +980,7 @@ public:
 			throw std::out_of_range("Index out of range");
 		}
 
-		using SubArray = Array<T, std::max(1,nDim-1)>;
+		using SubArray = Array<T, std::max(1,nDim-1), viewConstness>;
 		using SubShapeBlock = typename SubArray::ShapeBlock;
 
 		int offset = strides()[dim]*coord;
@@ -798,6 +1007,104 @@ public:
 		return SubArray(_data + offset, subshape, substrides);
 	}
 
+	inline Array<T, std::max(1,nDim-1), ConstView> sliceView(int dim, int coord) const {
+
+		if (dim < 0 or dim >= nDim) {
+			throw std::out_of_range("Dim index out of range");
+		}
+
+		if (coord < 0 or coord >= shape()[dim]) {
+			throw std::out_of_range("Index out of range");
+		}
+
+		using SubArray = Array<T, std::max(1,nDim-1), ConstView>;
+		using SubShapeBlock = typename SubArray::ShapeBlock;
+
+		int offset = strides()[dim]*coord;
+		SubShapeBlock subshape;
+		SubShapeBlock substrides;
+
+		if (nDim == 1) {
+			subshape = {1};
+			substrides = {strides()[0]};
+
+			return SubArray(_data + offset, subshape, substrides);
+		}
+
+		for (int i = 0; i < dim; i++) {
+			subshape[i] = shape()[i];
+			substrides[i] = strides()[i];
+		}
+
+		for (int i = dim+1; i < nDim; i++) {
+			subshape[i-1] = shape()[i];
+			substrides[i-1] = strides()[i];
+		}
+
+		return SubArray(_data + offset, subshape, substrides);
+	}
+
+	template<AccessCheck c = AccessCheck::Check>
+	inline Array<T, 1, viewConstness> indexDimView(int dim, std::array<array_size_t,nDim-1> const& coords) {
+
+		if (dim < 0 or dim >= nDim) {
+			throw std::out_of_range("Dim index out of range");
+		}
+
+		ShapeBlock startIdx;
+
+		for (int i = 0; i < nDim; i++) {
+
+			if (i < dim) {
+				startIdx[i] = coords[i];
+			}
+
+			if (i == dim) {
+				startIdx[i] = 0;
+			}
+
+			if (i > dim) {
+				startIdx[i] = coords[i-1];
+			}
+		}
+
+		int flatidx = flatIndex<c>(startIdx);
+
+		using SubArray = Array<T, 1, viewConstness>;
+
+		return SubArray(&_data[flatidx], {_shape[dim]}, {_strides[dim]});
+	}
+
+	template<AccessCheck c = AccessCheck::Check>
+	inline Array<T, 1, ConstView> indexDimView(int dim, std::array<array_size_t,nDim-1> const& coords) const {
+
+		if (dim < 0 or dim >= nDim) {
+			throw std::out_of_range("Dim index out of range");
+		}
+
+		ShapeBlock startIdx;
+
+		for (int i = 0; i < nDim; i++) {
+
+			if (i < dim) {
+				startIdx[i] = coords[i];
+			}
+
+			if (i == dim) {
+				startIdx[i] = 0;
+			}
+
+			if (i > dim) {
+				startIdx[i] = coords[i-1];
+			}
+		}
+
+		int flatidx = flatIndex<c>(startIdx);
+
+		using SubArray = Array<T, 1, ConstView>;
+
+		return SubArray(&_data[flatidx], {_shape[dim]}, {_strides[dim]});
+	}
 
 	template<AccessCheck c = AccessCheck::Check>
 	inline int flatIndex(ShapeBlock const& idxs) const {
@@ -879,25 +1186,30 @@ public:
 
 	}
 
-	template<AccessCheck c = AccessCheck::Check, typename... Ds>
-	inline T& at(Ds... idxs) {
+	template<AccessCheck c = AccessCheck::Check, ArrayDataAccessConstness vc = viewConstness, typename... Ds>
+	inline std::enable_if_t<vc == NonConstView, T&> at(Ds... idxs) {
+		static_assert (vc == viewConstness, "invalid view constness");
 		int fIds = flatIndex<c>(idxs...);
 		return _data[fIds];
 	}
 
-	template<AccessCheck c = AccessCheck::Check>
-	inline T& at(ShapeBlock const& idxs) {
+	template<AccessCheck c = AccessCheck::Check, ArrayDataAccessConstness vc = viewConstness>
+	inline std::enable_if_t<vc == NonConstView, T&> at(ShapeBlock const& idxs) {
+		static_assert (vc == viewConstness, "invalid view constness");
 		int fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
 
-	template<typename... Ds>
-	inline T& atUnchecked(Ds... idxs) {
+	template<ArrayDataAccessConstness vc = viewConstness, typename... Ds>
+	inline std::enable_if_t<vc == NonConstView, T&> atUnchecked(Ds... idxs) {
+		static_assert (vc == viewConstness, "invalid view constness");
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
 		return _data[fIds];
 	}
 
-	inline T& atUnchecked(ShapeBlock const& idxs) {
+	template<ArrayDataAccessConstness vc = viewConstness>
+	inline std::enable_if_t<vc == NonConstView, T&> atUnchecked(ShapeBlock const& idxs) {
+		static_assert (vc == viewConstness, "invalid view constness");
 		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		return _data[fIds];
 	}
@@ -938,6 +1250,7 @@ public:
 
 	}
 
+	template<ArrayDataAccessConstness vc = viewConstness>
 	/*!
 	 * \brief takePointer allows for an external operator to take ownership of the managed pointer
 	 * \return the data pointer if the multidimensional array do manage it, else nullptr
@@ -946,9 +1259,9 @@ public:
 	 * and make the new class responsible for managing the data.
 	 *
 	 * In most cases it is not advisable to use it, except if you know exactly what you are doing, as
-	 * misuse can lean to memory leak or corruption.
+	 * misuse can lead to memory leak or corruption.
 	 */
-	T* takePointer() {
+	std::enable_if_t<vc == NonConstView, T*> takePointer() {
 
 		if (_manageData) {
 			_manageData = false;

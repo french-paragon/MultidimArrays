@@ -20,7 +20,13 @@ int main() {
 
 
 	Multidim::Array<int, 2> b(3, 9);
+	using MarrayB = typeof (b);
 
+	static_assert (!MarrayB::isConstView(), "b is not non const view");
+
+	using MarrayBSub = typeof (b.subView(Multidim::DimSlice(0,3), Multidim::DimSlice(0,3)));
+
+	static_assert (!MarrayBSub::isConstView(), "sub is not non const view");
 
 	for (int i = 0; i < 3; i++) {
 
