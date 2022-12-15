@@ -118,7 +118,7 @@ public:
 	}
 
 	static constexpr ShapeBlock initialIndex() {
-		ShapeBlock initial;
+		ShapeBlock initial {};
 
 		for (int i = 0; i < nDim; i++) {
 			initial[i] = 0;
@@ -127,7 +127,7 @@ public:
 	}
 
 	static constexpr ShapeBlock invalidIndex() {
-		ShapeBlock invalid;
+		ShapeBlock invalid {};
 
 		for (int i = 0; i < nDim; i++) {
 			invalid[i] = -1;
@@ -154,7 +154,7 @@ public:
 
 	ShapeBlock getIndexFromPseudoFlatId(int index, ShapeBlock const& valForExcludedIndex = initialIndex()) const {
 
-		ShapeBlock out;
+		ShapeBlock out {};
 		int leftOver = index;
 
 		for (int i = nDim-1; i >= 0; i--) {
