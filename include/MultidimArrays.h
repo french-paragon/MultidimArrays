@@ -1284,12 +1284,12 @@ public:
 
 		if (std::is_same<T_O, T>::value) {
 
-			Multidim::Array<T_O,3> casteted(reinterpret_cast<T_O*>(_data), shape(), strides(), _manageData);
+			Multidim::Array<T_O,nDim> casteted(reinterpret_cast<T_O*>(_data), shape(), strides(), _manageData);
 			_manageData = false;
 			return casteted;
 		}
 
-		Multidim::Array<T_O,3> casteted(shape(), strides());
+		Multidim::Array<T_O,nDim> casteted(shape(), strides());
 
 		#pragma omp parallel for
 		for (int i = 0; i < flatLenght(); i++) {
@@ -1310,7 +1310,7 @@ public:
 	 */
 	inline Multidim::Array<T_O, nDim> cast() const {
 
-		Multidim::Array<T_O,3> casteted(shape(), strides());
+		Multidim::Array<T_O,nDim> casteted(shape(), strides());
 
 		#pragma omp parallel for
 		for (int i = 0; i < flatLenght(); i++) {
