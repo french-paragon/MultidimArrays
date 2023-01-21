@@ -169,6 +169,23 @@ public:
 		return out;
 	}
 
+	int getPseudoFlatIdFromIndex(ShapeBlock const& idx) {
+
+		if (nDim == 0) {
+			return 0;
+		}
+
+		int flat = 0;
+
+		for (int i = 0; i < nDim; i++) {
+			if (!_excludedDims.indexIsExcluded(i)) {
+				flat += _pseudoStride[i]*idx[i];
+			}
+		}
+
+		return flat;
+	}
+
 protected:
 	DimsExclusionSet<nDim> _excludedDims;
 	ShapeBlock _shape;

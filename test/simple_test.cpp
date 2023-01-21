@@ -85,7 +85,7 @@ int main() {
 		shape[i] = testIdxConvDimsSize;
 	}
 
-	Multidim::IndexConverter<3> testConverter(shape, Multidim::DimsExclusionSet<testIdxConvDims>(testIdxConvDims-1));
+	Multidim::IndexConverter<testIdxConvDims> testConverter(shape, Multidim::DimsExclusionSet<testIdxConvDims>(testIdxConvDims-1));
 
 
 	std::cout << std::endl;
@@ -96,11 +96,13 @@ int main() {
 
 		auto idx = testConverter.getIndexFromPseudoFlatId(i);
 
+		int inv = testConverter.getPseudoFlatIdFromIndex(idx);
+
 		std::cout << "index " << i << ": \t[ ";
 		for (int j = 0; j < testIdxConvDims; j++) {
 			std::cout << idx[j] << ' ';
 		}
-		std::cout << "]" << std::endl;
+		std::cout << "] (inverted = " << inv << ")" << std::endl;
 	}
 
 	std::cout << std::endl;
