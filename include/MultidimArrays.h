@@ -2,7 +2,7 @@
 #define MULTIDIM_ARRAY_H
 
 /*
-Copyright 2021-2022 Paragon<french.paragon@gmail.com>
+Copyright 2021-2023 Paragon<french.paragon@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ limitations under the License.
 #include <tuple>
 #include <assert.h>
 #include <iostream>
+#include <algorithm>
 
 namespace Multidim {
 
@@ -1152,16 +1153,30 @@ public:
 
 	}
 
+    /*!
+     * \brief indexFromFlat convert a flat index back to a multidimensional shape block
+     * \param index the flat index
+     * \return a ShapeBlock which, once converted with flatIndex, should give back the original flat index.
+     */
 	ShapeBlock indexFromFlat(int index) const {
 
 		ShapeBlock out;
 		int leftOver = index;
 
+        std::array<int, nDim> strides_order;
+
+        for (int i = 0; i < nDim; i++) {
+            strides_order[i] = i;
+        }
+
+        std::sort(strides_order.begin(), strides_order.end(),
+                  [this] (int i1, int i2) { return _strides[i1] < _strides[i2]; });
+
 		for (int i = nDim-1; i >= 0; i--) {
 
 			//garanteed optimizable to branchless !
-			out[i] = leftOver/_strides[i];
-			leftOver %= _strides[i];
+            out[strides_order[i]] = leftOver/_strides[strides_order[i]];
+            leftOver %= _strides[strides_order[i]];
 		}
 
 		return out;
@@ -1291,6 +1306,15 @@ public:
 
 		Multidim::Array<T_O,nDim> casteted(shape(), strides());
 
+        if (isDense()) {
+            #pragma omp parallel for
+            for (int i = 0; i < flatLenght(); i++) {
+                casteted._data[i] = static_cast<T_O>(_data[i]);
+            }
+
+            return casteted;
+        }
+
 		#pragma omp parallel for
 		for (int i = 0; i < flatLenght(); i++) {
 			ShapeBlock idx = indexFromFlat(i);
@@ -1305,12 +1329,21 @@ public:
 	 * \brief cast generate an array of a different type than the original array.
 	 * \return the casted array
 	 *
-	 * The const variant is garantted to copy the data, even is T_O and T are the same.
+     * The const variant is guaranteed to copy the data, even is T_O and T are the same.
 	 *
 	 */
 	inline Multidim::Array<T_O, nDim> cast() const {
 
 		Multidim::Array<T_O,nDim> casteted(shape(), strides());
+
+        if (isDense()) {
+            #pragma omp parallel for
+            for (int i = 0; i < flatLenght(); i++) {
+                casteted._data[i] = static_cast<T_O>(_data[i]);
+            }
+
+            return casteted;
+        }
 
 		#pragma omp parallel for
 		for (int i = 0; i < flatLenght(); i++) {
