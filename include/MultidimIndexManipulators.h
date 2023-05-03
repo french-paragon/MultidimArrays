@@ -18,6 +18,7 @@ limitations under the License.
 */
 
 #include <array>
+#include <type_traits>
 
 namespace Multidim {
 
@@ -28,8 +29,9 @@ template<int nDim>
 class DimsExclusionSet {
 
 public:
-	template<typename... Ds>
-	DimsExclusionSet(Ds ... maskedDims) {
+    template<typename... Ds, std::enable_if_t<std::conjunction_v<std::is_integral<Ds>...>>* = nullptr>
+    DimsExclusionSet(Ds ... maskedDims) {
+
 		static_assert(sizeof...(maskedDims) <= nDim,
 				"Number of dimension provided is bigger than the number of dimensions in the set !");
 
@@ -41,7 +43,7 @@ public:
 			_mask[masked] = true;
 		}
 	}
-	template<int nElems>
+    template<std::size_t nElems>
 	DimsExclusionSet(std::array<int, nElems> const& maskedDims) {
 		static_assert(nElems <= nDim,
 				"Number of dimension provided is bigger than the number of dimensions in the set !");

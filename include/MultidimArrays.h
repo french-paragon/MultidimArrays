@@ -296,7 +296,7 @@ public:
 	}
 
 
-	template<typename... Ds>
+    template<typename... Ds, std::enable_if_t<std::conjunction_v<std::is_integral<Ds>...>>* = nullptr>
 	/*!
 	 * \brief Array constructor with set shape
 	 * \param dims the sizes of each dimensions.
