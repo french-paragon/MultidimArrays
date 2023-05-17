@@ -105,5 +105,15 @@ int main() {
 		std::cout << "] (inverted = " << inv << ")" << std::endl;
 	}
 
-	std::cout << std::endl;
+    std::cout << std::endl;
+
+    Multidim::Array<float,4> empty1;
+
+    std::cout << "Empty1 empty: " << empty1.empty() << std::endl;
+
+    Multidim::Array<uint8_t,4> empty2 = empty1.cast<uint8_t>();
+
+    std::cout << "Empty2 empty: " << empty1.empty() << std::endl;
+
+    std::cout << std::endl;
 }

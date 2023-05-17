@@ -1297,6 +1297,10 @@ public:
 	 */
 	inline Multidim::Array<T_O, nDim> cast() {
 
+        if (empty()) {
+            return Multidim::Array<T_O, nDim>();
+        }
+
 		if (std::is_same<T_O, T>::value) {
 
 			Multidim::Array<T_O,nDim> casteted(reinterpret_cast<T_O*>(_data), shape(), strides(), _manageData);
@@ -1333,6 +1337,10 @@ public:
 	 *
 	 */
 	inline Multidim::Array<T_O, nDim> cast() const {
+
+        if (empty()) {
+            return Multidim::Array<T_O, nDim>();
+        }
 
 		Multidim::Array<T_O,nDim> casteted(shape(), strides());
 
