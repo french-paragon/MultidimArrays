@@ -844,7 +844,7 @@ private:
 	}
 
 	template<typename... slices>
-	inline int dataOffset(slices... s) {
+    inline long dataOffset(slices... s) {
 		return flatIndex(firstIndex(s...));
 	}
 
@@ -942,7 +942,7 @@ public:
 		using SubArray = Array<T, slicedDims<slices...>(), viewConstness>;
 		using SubShapeBlock = typename SubArray::ShapeBlock;
 
-		int offset = dataOffset(s...);
+        long offset = dataOffset(s...);
 		SubShapeBlock shape = getSubShape(s...);
 		SubShapeBlock strides = getSubStrides(s...);
 
@@ -958,7 +958,7 @@ public:
 		using SubArray = Array<T, slicedDims<slices...>(), ConstView>;
 		using SubShapeBlock = typename SubArray::ShapeBlock;
 
-		int offset = dataOffset(s...);
+        long offset = dataOffset(s...);
 		SubShapeBlock shape = getSubShape(s...);
 		SubShapeBlock strides = getSubStrides(s...);
 
@@ -1108,7 +1108,7 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check>
-	inline int flatIndex(ShapeBlock const& idxs) const {
+    inline long flatIndex(ShapeBlock const& idxs) const {
 
 		if (c == AccessCheck::Check) {
 			for (int i = 0; i < nDim; i++) {
@@ -1118,10 +1118,10 @@ public:
 			}
 		}
 
-		int fIds = 0;
+        long fIds = 0;
 
 		for (int i = 0; i < nDim; i++) {
-			fIds += idxs[i]*_strides[i];
+            fIds += static_cast<long>(idxs[i])*_strides[i];
 		}
 
 		return fIds;
@@ -1129,7 +1129,7 @@ public:
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
-	inline int flatIndex(int idx0, Ds... idxs) const {
+    inline long flatIndex(int idx0, Ds... idxs) const {
 
 		static_assert(sizeof...(idxs) == nDim -1 or sizeof...(idxs) == 0,
 				"Wrong number of indices provided");
@@ -1142,7 +1142,7 @@ public:
 				}
 			}
 
-			return idx0*_strides[0];
+            return static_cast<long>(idx0)*_strides[0];
 
 		} else {
 
@@ -1158,10 +1158,10 @@ public:
      * \param index the flat index
      * \return a ShapeBlock which, once converted with flatIndex, should give back the original flat index.
      */
-	ShapeBlock indexFromFlat(int index) const {
+    ShapeBlock indexFromFlat(long index) const {
 
 		ShapeBlock out;
-		int leftOver = index;
+        long leftOver = index;
 
         std::array<int, nDim> strides_order;
 
@@ -1204,57 +1204,57 @@ public:
 	template<AccessCheck c = AccessCheck::Check, ArrayDataAccessConstness vc = viewConstness, typename... Ds>
 	inline std::enable_if_t<vc == NonConstView, T&> at(Ds... idxs) {
 		static_assert (vc == viewConstness, "invalid view constness");
-		int fIds = flatIndex<c>(idxs...);
+        long fIds = flatIndex<c>(idxs...);
 		return _data[fIds];
 	}
 
 	template<AccessCheck c = AccessCheck::Check, ArrayDataAccessConstness vc = viewConstness>
 	inline std::enable_if_t<vc == NonConstView, T&> at(ShapeBlock const& idxs) {
 		static_assert (vc == viewConstness, "invalid view constness");
-		int fIds = flatIndex<c>(idxs);
+        long fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
 
 	template<ArrayDataAccessConstness vc = viewConstness, typename... Ds>
 	inline std::enable_if_t<vc == NonConstView, T&> atUnchecked(Ds... idxs) {
 		static_assert (vc == viewConstness, "invalid view constness");
-		int fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
+        long fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
 		return _data[fIds];
 	}
 
 	template<ArrayDataAccessConstness vc = viewConstness>
 	inline std::enable_if_t<vc == NonConstView, T&> atUnchecked(ShapeBlock const& idxs) {
 		static_assert (vc == viewConstness, "invalid view constness");
-		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
+        long fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		return _data[fIds];
 	}
 
 	template<AccessCheck c = AccessCheck::Check, typename... Ds>
 	inline T value(Ds... idxs) const {
-		int fIds = flatIndex<c>(idxs...);
+        long fIds = flatIndex<c>(idxs...);
 		return _data[fIds];
 	}
 
 	template<AccessCheck c = AccessCheck::Check>
 	inline T value(ShapeBlock const& idxs) const {
-		int fIds = flatIndex<c>(idxs);
+        long fIds = flatIndex<c>(idxs);
 		return _data[fIds];
 	}
 
 	template<typename... Ds>
 	inline T valueUnchecked(Ds... idxs) const {
-		int fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
+        long fIds = flatIndex<AccessCheck::Nocheck>(idxs...);
 		return _data[fIds];
 	}
 
 	inline T valueUnchecked(ShapeBlock const& idxs) const {
-		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
+        long fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		return _data[fIds];
 	}
 
 	inline T valueOrAlt(ShapeBlock const& idxs, T const& alt) const {
 
-		int fIds = flatIndex<AccessCheck::Nocheck>(idxs);
+        long fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		bool inBound = true;
 		for (int i = 0; i < nDim; i++) {
 			inBound = inBound and idxs[i] >= 0 and idxs[i] < _shape[i];
