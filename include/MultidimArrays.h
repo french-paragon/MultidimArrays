@@ -376,8 +376,8 @@ public:
 		for (int i = 0; i < nDim; i++) {
 			idx[i] = idx[i]-1;
 		}
-		int s = flatIndex(idx) + 1;
-		int v = 1;
+        long s = flatIndex(idx) + 1;
+        long v = 1;
 		for (int i = 0; i < nDim; i++) {
 			v *= _shape[i];
 		}
@@ -779,9 +779,9 @@ public:
 		return _shape;
 	}
 
-	int flatLenght() const {
+    long flatLenght() const {
 
-		int s = 1;
+        long s = 1;
 		for (int i = 0; i < nDim; i++) {
 			s *= _shape[i];
 		}
@@ -1069,7 +1069,7 @@ public:
 			}
 		}
 
-		int flatidx = flatIndex<c>(startIdx);
+        long flatidx = flatIndex<c>(startIdx);
 
 		using SubArray = Array<T, 1, viewConstness>;
 
@@ -1100,7 +1100,7 @@ public:
 			}
 		}
 
-		int flatidx = flatIndex<c>(startIdx);
+        long flatidx = flatIndex<c>(startIdx);
 
 		using SubArray = Array<T, 1, ConstView>;
 
