@@ -86,7 +86,7 @@ int main() {
 	}
 
 	Multidim::IndexConverter<testIdxConvDims> testConverter(shape, Multidim::DimsExclusionSet<testIdxConvDims>(testIdxConvDims-1));
-
+    Multidim::ExcludedDimsSaticIndexConverter<testIdxConvDims,1> idxsCompressor({testIdxConvDims-1});
 
 	std::cout << std::endl;
 
@@ -98,10 +98,17 @@ int main() {
 
 		int inv = testConverter.getPseudoFlatIdFromIndex(idx);
 
+        auto compressedIdx = idxsCompressor.getCompressedIndex(idx);
+
 		std::cout << "index " << i << ": \t[ ";
 		for (int j = 0; j < testIdxConvDims; j++) {
 			std::cout << idx[j] << ' ';
 		}
+
+        std::cout << "] compressed index: \t[ ";
+        for (int j = 0; j < testIdxConvDims-1; j++) {
+            std::cout << compressedIdx[j] << ' ';
+        }
 		std::cout << "] (inverted = " << inv << ")" << std::endl;
 	}
 

@@ -44,7 +44,7 @@ public:
 		}
 	}
     template<std::size_t nElems>
-	DimsExclusionSet(std::array<int, nElems> const& maskedDims) {
+    DimsExclusionSet(std::array<int, nElems> const& maskedDims) {
 		static_assert(nElems <= nDim,
 				"Number of dimension provided is bigger than the number of dimensions in the set !");
 
@@ -63,7 +63,7 @@ public:
 
 	}
 
-	DimsExclusionSet<nDim> inverse() const {
+    DimsExclusionSet<nDim> inverse() const {
 		IndexMaskBlock mask;
 
 		for (int i = 0; i < nDim; i++) {
@@ -76,14 +76,122 @@ public:
 		return r;
 	}
 
-	bool indexIsExcluded(int index) const {
+    bool indexIsExcluded(int index) const {
 		return _mask[index];
 	}
+
+    int nExcludedDims() const {
+        int n = 0;
+        for (int i = 0; i < nDim; i++) {
+            if (indexIsExcluded(i)) {
+                n++;
+            }
+        }
+        return n;
+    }
 
 protected:
 	typedef std::array<bool, nDim> IndexMaskBlock;
 
 	IndexMaskBlock _mask;
+};
+
+template<int nDim, int nExcludedDims>
+/*!
+ * \brief The excludedDimsIndexConverter class allow to convert between compressed and uncompressed index with excluded dimensions
+ *
+ * This is usefull to convert the index between for example a static binary mask (2d) and a video with rgb channels (4d)
+ *
+ * This requires the number of excluded dimensions to be known at compile time.
+ */
+class ExcludedDimsSaticIndexConverter {
+public:
+    static_assert (nDim > nExcludedDims, "Number of excluded dimensions has to be smaller than number of dimensions");
+
+    /*!
+     * \brief excludedDimsSaticIndexConverter build the excludedDimsSaticIndexConverter
+     * \param maskedDims the masked dimensions. All should be different. If two provided dimensions are the same the behavior of the class is undefined.
+     */
+    ExcludedDimsSaticIndexConverter(std::array<int, nExcludedDims> const& maskedDims) {
+        _mask = DimsExclusionSet<nDim>(maskedDims);
+        for (int i = 0; i < nDim; i++) {
+            _defaultIdxValues[i] = 0;
+        }
+    }
+    /*!
+     * \brief excludedDimsSaticIndexConverter build the excludedDimsSaticIndexConverter
+     * \param maskedDims the masked dimensions. All should be different. If two provided dimensions are the same the behavior of the class is undefined.
+     * \param largeIdxDefaultValues the default index for the uncompressed idx (to make masked dimensions non zero).
+     */
+    ExcludedDimsSaticIndexConverter(std::array<int, nExcludedDims> const& maskedDims, std::array<int, nDim> const& largeIdxDefaultValues) :
+        ExcludedDimsSaticIndexConverter(maskedDims)
+    {
+        _defaultIdxValues = largeIdxDefaultValues;
+    }
+
+    inline std::array<int, nDim - nExcludedDims> getCompressedIndex(std::array<int, nDim> const& fullIndex) const {
+        int nSkipped = 0;
+        std::array<int, nDim - nExcludedDims> compressed;
+        for (int i = 0; i < nDim; i++) {
+            if (_mask.indexIsExcluded(i)) {
+                nSkipped++;
+                continue;
+            }
+            compressed[i-nSkipped] = fullIndex[i];
+        }
+        return compressed;
+    }
+    inline std::array<int, nDim> getUncompressedIndex(std::array<int, nDim-nExcludedDims> const& compressedIndex) const {
+        int nSkipped = 0;
+        std::array<int, nDim> uncompressed;
+        for (int i = 0; i < nDim; i++) {
+            if (_mask.indexIsExcluded(i)) {
+                nSkipped++;
+                uncompressed[i] = _defaultIdxValues[i];
+                continue;
+            }
+            uncompressed[i] = compressedIndex[i-nSkipped];
+        }
+        return uncompressed;
+    }
+
+    int getCorrespondingUncompressedAxis(int compressedAxis) const {
+        int nCounted = 0;
+        for (int i = 0; i < nDim; i++) {
+            if (_mask.indexIsExcluded(i)) {
+                continue;
+            }
+            nCounted++;
+            if (nCounted == compressedAxis) {
+                return i;
+            }
+        }
+        return nDim;//should not happen
+    }
+
+    /*!
+     * \brief getCorrespondingCompressedAxis compute the compressed axis corresponding to an uncompressed axis
+     * \return the compressed axis id, or -1 if the uncompressed axis is ignored.
+     */
+    int getCorrespondingCompressedAxis(int uncompressedAxis) const {
+        int nSkipped = 0;
+
+        if (_mask.indexIsExcluded(uncompressedAxis)) {
+            return -1;
+        }
+
+        for (int i = 0; i < uncompressedAxis; i++) {
+            if (_mask.indexIsExcluded(i)) {
+                nSkipped++;
+            }
+        }
+
+        return uncompressedAxis-nSkipped;
+    }
+
+protected:
+    DimsExclusionSet<nDim> _mask;
+    std::array<int, nDim> _defaultIdxValues;
 };
 
 template<int nDim>
