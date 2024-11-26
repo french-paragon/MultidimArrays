@@ -17,6 +17,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// at this point if MULTIDIMARRAYS_STRONG_BOUND_CHECK is defined, then all access to arrays are checked.
+// this is usefull for debug purposes
+
 #include <array>
 #include <stdexcept>
 #include <cstring>
@@ -1110,6 +1113,14 @@ public:
 	template<AccessCheck c = AccessCheck::Check>
     inline long flatIndex(ShapeBlock const& idxs) const {
 
+        #ifdef MULTIDIMARRAYS_STRONG_BOUND_CHECK
+        for (int i = 0; i < nDim; i++) {
+            if (idxs[i] < 0 or idxs[i] >= _shape[i]) {
+                throw std::out_of_range("Index out of range");
+            }
+        }
+        #endif
+
 		if (c == AccessCheck::Check) {
 			for (int i = 0; i < nDim; i++) {
 				if (idxs[i] < 0 or idxs[i] >= _shape[i]) {
@@ -1135,6 +1146,12 @@ public:
 				"Wrong number of indices provided");
 
 		if (sizeof...(idxs) == 0) {
+
+            #ifdef MULTIDIMARRAYS_STRONG_BOUND_CHECK
+            if (idx0 < 0 or idx0 >= flatLenght()) {
+                throw std::out_of_range("Index out of range");
+            }
+            #endif
 
 			if (c == AccessCheck::Check) {
 				if (idx0 < 0 or idx0 >= flatLenght()) {
@@ -1252,13 +1269,19 @@ public:
 		return _data[fIds];
 	}
 
-	inline T valueOrAlt(ShapeBlock const& idxs, T const& alt) const {
-
-        long fIds = flatIndex<AccessCheck::Nocheck>(idxs);
+    inline T valueOrAlt(ShapeBlock const& idxs, T const& alt) const {
 		bool inBound = true;
 		for (int i = 0; i < nDim; i++) {
 			inBound = inBound and idxs[i] >= 0 and idxs[i] < _shape[i];
 		}
+
+        #ifdef MULTIDIMARRAYS_STRONG_BOUND_CHECK
+        if (!inBound) { //not branchless, but necessary when bound check is forced even with AccessCheck::Nocheck
+            return alt;
+        }
+        #endif
+
+        long fIds = flatIndex<AccessCheck::Nocheck>(idxs);
 		fIds = (inBound) ? fIds : 0;
 		T const& val = _data[fIds];
 		return (inBound) ? val : alt;
