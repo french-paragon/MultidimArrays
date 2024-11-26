@@ -827,16 +827,16 @@ public:
 
 private:
 
-	inline array_size_t sliceFirstIndex(DimSlice const& slice) {
+    inline array_size_t sliceFirstIndex(DimSlice const& slice) const {
 		return slice.startIndex;
 	}
 
-	inline array_size_t sliceFirstIndex(DimIndex const& index) {
+    inline array_size_t sliceFirstIndex(DimIndex const& index) const {
 		return index.index;
 	}
 
 	template<typename... slices>
-	inline ShapeBlock firstIndex(slices... s) {
+    inline ShapeBlock firstIndex(slices... s) const {
 		ShapeBlock blk = {sliceFirstIndex(s)...};
 		for (int i = 0; i < nDim; i++) {
 			if (blk[i] < 0) {
@@ -847,12 +847,12 @@ private:
 	}
 
 	template<typename... slices>
-    inline long dataOffset(slices... s) {
+    inline long dataOffset(slices... s) const {
 		return flatIndex(firstIndex(s...));
 	}
 
 	template<typename... slices>
-	inline typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubShape(slices... s) {
+    inline typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubShape(slices... s) const {
 
 		using SBlock = typename Array<T, slicedDims<slices...>()>::ShapeBlock;
 
@@ -912,7 +912,7 @@ private:
 	}
 
 	template<typename... slices>
-	inline typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubStrides(slices... s) {
+    inline typename Array<T, slicedDims<slices...>()>::ShapeBlock getSubStrides(slices... s) const {
 
 		using SBlock = typename Array<T, slicedDims<slices...>()>::ShapeBlock;
 
