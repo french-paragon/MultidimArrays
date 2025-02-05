@@ -161,10 +161,10 @@ public:
             if (_mask.indexIsExcluded(i)) {
                 continue;
             }
-            nCounted++;
             if (nCounted == compressedAxis) {
                 return i;
             }
+            nCounted++;
         }
         return nDim;//should not happen
     }
