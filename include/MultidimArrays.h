@@ -166,6 +166,7 @@ public:
 	}
 
 	typedef std::array<array_size_t, nDim> ShapeBlock;
+	typedef T ScalarT;
 
 	class IndexBlock : public ShapeBlock {
 	public:
