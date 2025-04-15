@@ -1,6 +1,7 @@
 #include "MultidimArrays.h"
 #include "MultidimIndexManipulators.h"
 #include <iostream>
+#include <cstdint>
 
 int main() {
 
