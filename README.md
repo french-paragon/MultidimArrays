@@ -17,17 +17,18 @@ To use the library in cmake directly using FetchContent write:
 
 ```
 include(FetchContent) #if you have not done so before
-FetchContent_Declare(
-  multidimarrays
-  GIT_REPOSITORY https://github.com/french-paragon/MultidimArrays.git
-  GIT_TAG [select your tag here]
+FetchContent_MakeAvailable(multidimarrays)FetchContent_Declare(
+    MultidimArrays
+    GIT_REPOSITORY https://github.com/french-paragon/MultidimArrays.git
+    GIT_TAG [select your tag here]
+    FIND_PACKAGE_ARGS
 )
-FetchContent_MakeAvailable(multidimarrays)
+FetchContent_MakeAvailable(MultidimArrays)
 ```
 
 in your CMakeLists.txt
 
-You can then link against the Multidim::Arrays target and the corresponding include directories will be set for your targets.
+You can then link against the MultidimArrays::MultidimArrays target and the corresponding include directories will be set for your targets.
 
 To use the library just include the corresponding headers:
 
