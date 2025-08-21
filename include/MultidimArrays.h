@@ -1164,7 +1164,7 @@ public:
 
 		} else {
 
-			ShapeBlock idxs_array = {idx0, idxs...};
+            ShapeBlock idxs_array = {idx0, static_cast<int>(idxs)...};
 			return flatIndex<c>(idxs_array);
 
 		}
