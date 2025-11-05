@@ -1,5 +1,5 @@
-#include "MultidimArrays.h"
-#include "MultidimIndexManipulators.h"
+#include "../include/MultidimArrays.h"
+#include "../include/MultidimIndexManipulators.h"
 #include <iostream>
 #include <cstdint>
 

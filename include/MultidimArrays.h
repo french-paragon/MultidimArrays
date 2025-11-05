@@ -411,7 +411,7 @@ public:
 		_manageData(manage)
 	{
 
-	}
+    }
 
 	/*!
 	 * \brief Array copy constructor
@@ -936,6 +936,20 @@ private:
 	}
 
 public:
+
+
+
+    /*!
+     * \brief buildReshapedView build a non owning const view of the underlying data
+     * \param shape the shape to use for the view
+     * \param strides the strides to use for the view
+     * \return a view, with a different shape and strides
+     */
+    template<int nViewDim>
+    Array<T, nViewDim, ConstView> buildReshapedView(ShapeBlock const& shape, ShapeBlock const& strides) const {
+        constexpr bool manage = false;
+        return Array<T, nViewDim, ConstView>(_data, shape, strides, manage);
+    }
 
 	template<typename... slices>
 	inline Array<T, slicedDims<slices...>(), viewConstness> subView(slices... s) {
